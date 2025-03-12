@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .form-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .loading {
+            display: none;
+            margin-top: 20px;
+            color: #666;
+        }
+        .segment {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #eee;
+            border-radius: 3px;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 0.8em;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>Audio Transcription Service</h1>
+
+<div class="form-container">
+    <h2>Upload Audio File</h2>
+    <form id="upload-form">
+        <input type="file" id="audio-file" accept="audio/*" required>
+        <button type="submit">Transcribe</button>
+    </form>
+    <div id="loading" class="loading">
+        <p>Transcribing... This may take a few moments.</p>
+    </div>
+</div>
+
+<div id="result-container" class="result-container" style="display: none;">
+    <h2>Transcription Result</h2>
+    <div id="transcription-results"></div>
+</div>
+
+<script>
+    document.getElementById('upload-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const fileInput = document.getElementById('audio-file');
+        if (!fileInput.files[0]) {
+            alert('Please select an audio file.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('audio', fileInput.files[0]);
+
+        const loading = document.getElementById('loading');
+        const resultContainer = document.getElementById('result-container');
+        const resultsDiv = document.getElementById('transcription-results');
+
+        loading.style.display = 'block';
+        resultContainer.style.display = 'none';
+        resultsDiv.innerHTML = '';
+
+        try {
+            const response = await fetch('/api/transcribe', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Transcription failed');
+            }
+
+            const data = await response.json();
+
+            if (data.segments && data.segments.length > 0) {
+                data.segments.forEach(segment => {
+                    const segmentDiv = document.createElement('div');
+                    segmentDiv.className = 'segment';
+
+                    const startTime = formatTime(segment.start_time);
+                    const endTime = formatTime(segment.end_time);
+
+                    segmentDiv.innerHTML = `
+                            <div class="timestamp">[${startTime} --> ${endTime}]</div>
+                            <div class="text">${segment.text}</div>
+                        `;
+
+                    resultsDiv.appendChild(segmentDiv);
+                });
+
+                resultContainer.style.display = 'block';
+            } else {
+                throw new Error('No transcription data received');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+            console.error('Transcription error:', error);
+        } finally {
+            loading.style.display = 'none';
+        }
+    });
+
+    function formatTime(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+        const millis = Math.round((seconds - Math.floor(seconds)) * 1000);
+
+        return [
+            hours.toString().padStart(2, '0'),
+            minutes.toString().padStart(2, '0'),
+            secs.toString().padStart(2, '0')
+        ].join(':') + '.' + millis.toString().padStart(3, '0');
+    }
+</script>
+</body>
+</html>

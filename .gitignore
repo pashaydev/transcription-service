@@ -1,0 +1,10 @@
+# .dockerignore
+.git
+.github
+whisper.cpp
+.env
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.ogg
